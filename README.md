@@ -2,7 +2,13 @@
 
 Application to format Income Statements
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+**_Dedication:_**  
+This app is dedicated to all the engineers out there that understand the importance of first engaging with customers towards clearly defining their basic requirements, 
+before designing a system for them to use. May this understanding spread widely and make apps like this one unnecessary...  
+
+**_Disclaimer:_**  
+Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information.  
+You are welcome to improve it by contacting divanvdb@sun.ac.za 
 
 ### How to run it on your own machine
 
@@ -27,3 +33,8 @@ Application to format Income Statements
    - Orderded the columns differently with formatting
    - Checking if assets and PO are None
    - Fixed the PO Number heading requirements
+
+4. TODO:
+
+   - Obligation grouping without commitment numbers
+   - Auto download

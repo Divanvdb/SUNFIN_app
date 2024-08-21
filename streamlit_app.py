@@ -443,10 +443,6 @@ st.markdown('''**_Updates to V1.1:_**
 - Added a balances sheet
 ''')
 
-st.markdown('''**_TODO:_**  
-- Obligation grouping round  
-''')
-
 st.markdown('---')
 
 progress_placeholder = st.empty()

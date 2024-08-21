@@ -1,6 +1,6 @@
-# 🎈 Blank app template
+# 🎈 SUNFIN APP
 
-A simple Streamlit app template for you to modify!
+Application to format Income Statements
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
 
@@ -17,3 +17,13 @@ A simple Streamlit app template for you to modify!
    ```
    $ streamlit run streamlit_app.py
    ```
+
+3. App updates 
+- Updates:
+
+   - Removed acc_analyses_path
+   - Added while loop into extract_data_from_excel function
+   - Dropped nan columns
+   - Orderded the columns differently with formatting
+   - Checking if assets and PO are None
+   - Fixed the PO Number heading requirements

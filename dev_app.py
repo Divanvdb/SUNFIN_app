@@ -362,6 +362,7 @@ class ExcelProcessor:
 
         self.df_bca = self.add_descriptions(self.df_bca, comm_numbers)
         self.df_reduced = self.df_bca.loc[(self.df_bca['Balance Type'] != 'Budget')]
+        self.df_reduced['Amount'] = 0
 
         self.df_sorted = self.group_and_sort(self.df_reduced, comm_numbers)
 
@@ -390,14 +391,20 @@ class ExcelProcessor:
                 st.markdown(f"PO Details are None")
 
         progress_placeholder.markdown(f"Processing: {60}% complete...")
-        self.df_sorted = self.df_sorted[['Budget Account', 'Cost Center Segment Description', 'Account Description', 
+
+        column_order = ['Budget Account', 'Cost Center Segment Description', 'Account Description', 
                                    'Transaction Type', 'Transaction SubType', 'Transaction Action', 'Transaction Number', 
                                    'Expense Report Owner', 'Transaction Account', 'Transaction ID', 'Transaction Currency', 
                                    'Activity Type', 'Reservation Amount', 'Liquidation Transaction Type', 'Liquidation Transaction Number', 
                                    'Liquidation Amount', 'Commitment Nr', 'Obligation Nr', 'Expenditure Nr', 
                                    'Cluster', 'Project Code', 'Budget Date', 
                                    'Balance Type', 'Transaction Amount', 'Item Description', 
-                                   'Requester Name', 'Supplier Name', 'Item Category Description']]
+                                   'Requester Name', 'Supplier Name', 'Item Category Description']
+        
+        existing_columns = [col for col in column_order if col in self.df_sorted.columns]
+
+        
+        self.df_sorted = self.df_sorted.reindex(columns=existing_columns)
 
         progress_placeholder.markdown(f"Processing: {80}% complete...")
         output_file = self.create_output_file(self.df_sorted, file_paths)
@@ -433,6 +440,7 @@ st.markdown('''**_Updates to V1.1:_**
 - Checking if assets and PO are None  
 - Fixed the PO Number heading requirements  
 - Rename Transaction Description to Cluster  
+- Added a balances sheet
 ''')
 
 st.markdown('''**_TODO:_**  

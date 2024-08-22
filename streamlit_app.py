@@ -480,11 +480,10 @@ st.markdown('---')
 st.markdown('This app processes BCA, Assets and PO Details files and returns an updated Excel file.')
 
 st.markdown('''**_Updates to V1.2:_**  
-- Bug fixes regarding BCA files with no possitive commitments
-- No balances sheet if there is no assets file
-- Added Obligation grouping round 
+- Bug fixes regarding BCA files with no positive commitments  
+- No balances sheet if there is no assets file  
+- Added Obligation grouping round  
 ''')
-
 st.markdown('---')
 
 progress_placeholder = st.empty()

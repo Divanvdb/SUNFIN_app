@@ -18,6 +18,12 @@ class ExcelProcessor:
         self.df_po = pd.DataFrame()
         self.df_sorted = pd.DataFrame()
         self.po_order_number = 'Purchase Order Number'
+        self.balances = True
+        self.required_columns = ['Transaction Number', 'Balance Type', 'Transaction Amount', 
+                    'Liquidation Transaction Number', 'Cluster', 
+                    'Commitment Nr', 'Obligation Nr', 'Expenditure Nr']
+        
+        self.sheet_names = ['BCA']
 
     def extract_data_from_excel(self, file_path, file_type='bca', verbose=False):
         workbook = load_workbook(filename=file_path)
@@ -86,6 +92,15 @@ class ExcelProcessor:
             df_commitments = df[df['Balance Type'] == 'Commitment']
             df_budget = df[df['Balance Type'] == 'Budget']
             df_expenditures = df[df['Balance Type'] == 'Expenditure']
+
+            # Check if liquidation transaction number is in the transaction number column
+            self.missing_columns = [col for col in self.required_columns if col not in df.columns]
+
+            if not self.missing_columns:
+                st.markdown("All required columns are present in the dataframe.")
+            else:
+                st.markdown("The following columns are missing:", self.missing_columns)
+            
 
             if verbose:
 
@@ -159,22 +174,20 @@ class ExcelProcessor:
 
         return df
 
-    def group_and_sort(self, df, numbers, threshold=10):
+    def group_and_sort(self, df, numbers, threshold=10, offset=0):
+
+        # Add cluster numbers
         for i in range(len(numbers)):
             trans_nrs = [numbers[i]]
-            trans_nrs = df.loc[
-                df['Liquidation Transaction Number'].isin(trans_nrs) | 
-                df['Transaction Number'].isin(trans_nrs), 
-                'Transaction Number'
-            ].unique()
-            trans_nrs = df.loc[
-                df['Liquidation Transaction Number'].isin(trans_nrs) | 
-                df['Transaction Number'].isin(trans_nrs), 
-                'Transaction Number'
-            ].unique()
+            trans_nrs = df.loc[df['Liquidation Transaction Number'].isin(trans_nrs) | 
+                df['Transaction Number'].isin(trans_nrs), 'Transaction Number'].unique()
+            
+            trans_nrs = df.loc[df['Liquidation Transaction Number'].isin(trans_nrs) | 
+                df['Transaction Number'].isin(trans_nrs),'Transaction Number'].unique()
 
-            df.loc[df['Transaction Number'].isin(trans_nrs), 'Cluster'] = i
+            df.loc[df['Transaction Number'].isin(trans_nrs), 'Cluster'] = offset + i
 
+        # Create the transaction amounts based on cluster
         for i in range(len(numbers)):
             df.loc[
                 (df['Cluster'] == i) & 
@@ -196,12 +209,14 @@ class ExcelProcessor:
                 'Transaction Amount'
             ].sum()
 
+        # Assign project codes based on amount vs threshold
         df.loc[
             (df['Amount'] < threshold) & 
             (df['Amount'] > -threshold), 
             'Project Code'
         ] = 'Ignore'
 
+        # Order the transactions to make sense
         balance_type_order = pd.CategoricalDtype(
             categories=["Commitment", "Obligation", "Expenditure"],
             ordered=True
@@ -220,14 +235,12 @@ class ExcelProcessor:
         new_workbook = Workbook()
         new_workbook.remove(new_workbook.active)  
 
-        sheet_names = ['BCA', 'BCA Assets', 'List PO']
-
         for i, path in enumerate(file_paths):
             workbook = load_workbook(path)
             
             sheet = workbook.active
             
-            new_sheet = new_workbook.create_sheet(title=sheet_names[i])
+            new_sheet = new_workbook.create_sheet(title=self.sheet_names[i])
             
             for row in sheet:
                 for cell in row:
@@ -241,6 +254,8 @@ class ExcelProcessor:
 
             for merged_range in sheet.merged_cells.ranges:
                 new_sheet.merge_cells(str(merged_range))
+
+        progress_placeholder.markdown(f"Processing: {70}% complete...")
 
         # Add new data
 
@@ -266,31 +281,36 @@ class ExcelProcessor:
 
         new_sheet.auto_filter.ref = new_sheet.dimensions
 
+        progress_placeholder.markdown(f"Processing: {80}% complete...")
+
         # Add balances sheet
+        if self.balances:
 
-        df_balances = self.get_balances()
+            df_balances = self.get_balances()
 
-        new_sheet = new_workbook.create_sheet(title='Balances')
+            new_sheet = new_workbook.create_sheet(title='Balances')
 
-        for r_idx, row in enumerate(dataframe_to_rows(df_balances, index=False, header=True), 1):
-            for c_idx, value in enumerate(row, 1):
-                new_cell = new_sheet.cell(row=r_idx, column=c_idx, value=value)
-                if r_idx == 1:
-                    new_cell.font = Font(bold=True)
-        
-        for col in new_sheet.columns:
-            max_length = 0
-            column = col[0].column_letter  # Get the column name
-            for cell in col:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(cell.value)
-                except:
-                    pass
-            adjusted_width = (max_length + 2)  # Adding a little extra space
-            new_sheet.column_dimensions[column].width = adjusted_width
+            for r_idx, row in enumerate(dataframe_to_rows(df_balances, index=False, header=True), 1):
+                for c_idx, value in enumerate(row, 1):
+                    new_cell = new_sheet.cell(row=r_idx, column=c_idx, value=value)
+                    if r_idx == 1:
+                        new_cell.font = Font(bold=True)
+            
+            for col in new_sheet.columns:
+                max_length = 0
+                column = col[0].column_letter  # Get the column name
+                for cell in col:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(cell.value)
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)  # Adding a little extra space
+                new_sheet.column_dimensions[column].width = adjusted_width
 
-        new_sheet.auto_filter.ref = new_sheet.dimensions
+            new_sheet.auto_filter.ref = new_sheet.dimensions
+
+        progress_placeholder.markdown(f"Processing: {90}% complete...")
 
         # Save workbook to BytesIO stream
 
@@ -332,29 +352,41 @@ class ExcelProcessor:
         return df
 
     def process(self):
+        # BCA setup 
         file_paths = []
         self.df_bca = self.extract_data_from_excel(self.bca_path, verbose=False)
 
         file_paths.append(self.bca_path)
 
+        # Debugging line
+        # self.df_bca = self.df_bca.loc[(self.df_bca['Balance Type'] != 'Budget'), ['Transaction Number', 'Balance Type', 'Transaction Amount', 'Liquidation Transaction Number', 
+        #                                                                          'Cluster', 'Commitment Nr', 'Obligation Nr', 'Expenditure Nr']]
+        
+        # Actual line
         self.df_bca = self.df_bca.loc[(self.df_bca['Balance Type'] != 'Budget')]
-        self.df_bca = self.df_bca.dropna(axis=1, how='all')
+        self.df_bca = self.df_bca.drop(columns=[col for col in self.df_bca.columns if col is None])
 
         progress_placeholder.markdown(f"Processing: {10}% complete...")
 
+        # Assets setup
         if self.assets_path is not None:
+            self.sheet_names.append('BCA Assets')
             file_paths.append(self.assets_path)
             self.df_assets = self.extract_data_from_excel(self.assets_path, verbose=False)
 
             self.df_assets = self.df_assets.loc[(self.df_assets['Balance Type'] != 'Budget')]
-            self.df_assets = self.df_assets.dropna(axis=1, how='all')
+            self.df_assets = self.df_assets.drop(columns=[col for col in self.df_assets.columns if col is None])
 
-            all_columns_none = self.df_assets.isna().all().all()
+            all_none = (self.df_assets['Transaction Amount'] == 'None').all()
 
-            if all_columns_none is False:
-                self.df_bca = pd.concat([self.df_bca, self.df_assets])
+            if all_none:
+                st.markdown(f"**_Note:_** Assets are None")
             else:
-                st.markdown(f"\tAssets are None")
+                self.df_bca = pd.concat([self.df_bca, self.df_assets])
+        else:
+            self.balances = False
+
+        # BCA and Assets processing
 
         progress_placeholder.markdown(f"Processing: {20}% complete...")
 
@@ -362,13 +394,28 @@ class ExcelProcessor:
 
         self.df_bca = self.add_descriptions(self.df_bca, comm_numbers)
         self.df_reduced = self.df_bca.loc[(self.df_bca['Balance Type'] != 'Budget')]
-        self.df_reduced['Amount'] = 0
 
-        self.df_sorted = self.group_and_sort(self.df_reduced, comm_numbers)
+        if comm_numbers.size == 0:
+            st.markdown(f"**_Note:_** No possitive commitments found")
+            self.df_sorted = self.df_reduced
+        else:
+            self.df_sorted = self.group_and_sort(self.df_reduced, comm_numbers)
+
+        ob_numbers = self.df_sorted.loc[(self.df_sorted['Cluster'] == '') &
+                                        (self.df_sorted['Balance Type'] == 'Obligation') &
+                                        (self.df_sorted['Transaction Amount'] > 0), 'Transaction Number'].unique()
+        
+        if ob_numbers.size == 0:
+            if comm_numbers.size == 0:
+                st.markdown(f"**_Note:_** No possitive obligations found")
+        else:
+            self.df_sorted =self.group_and_sort(self.df_sorted, ob_numbers, offset=len(comm_numbers))
 
         progress_placeholder.markdown(f"Processing: {30}% complete...")
 
+        # PO Details setup
         if self.po_details_path is not None:
+            self.sheet_names.append('PO Details')
             file_paths.append(self.po_details_path)
             self.df_po = self.extract_data_from_excel(self.po_details_path, file_type='PO', verbose=True)
 
@@ -388,9 +435,9 @@ class ExcelProcessor:
                     self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Requester Name'] = self.df_po_concatenated.loc[self.df_po_concatenated[self.po_order_number] == po_number, 'Requester Name'].values[0]
                     self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Supplier Name'] = self.df_po_concatenated.loc[self.df_po_concatenated[self.po_order_number] == po_number, 'Supplier Name'].values[0] 
             else:
-                st.markdown(f"PO Details are None")
+                st.markdown(f"**_Note:_** PO Details are None")
 
-        progress_placeholder.markdown(f"Processing: {60}% complete...")
+        progress_placeholder.markdown(f"Processing: {50}% complete...")
 
         column_order = ['Budget Account', 'Cost Center Segment Description', 'Account Description', 
                                    'Transaction Type', 'Transaction SubType', 'Transaction Action', 'Transaction Number', 
@@ -406,7 +453,7 @@ class ExcelProcessor:
         
         self.df_sorted = self.df_sorted.reindex(columns=existing_columns)
 
-        progress_placeholder.markdown(f"Processing: {80}% complete...")
+        progress_placeholder.markdown(f"Processing: {60}% complete...")
         output_file = self.create_output_file(self.df_sorted, file_paths)
         progress_placeholder.markdown(f"Processing: {100}% complete...")
 
@@ -432,15 +479,10 @@ st.markdown('---')
 
 st.markdown('This app processes BCA, Assets and PO Details files and returns an updated Excel file.')
 
-st.markdown('''**_Updates to V1.1:_**  
-- Removed Account Analyses  
-- Added functionality to extract_data_from_excel function  
-- Dropped NaN columns  
-- Ordered the columns differently with formatting  
-- Checking if assets and PO are None  
-- Fixed the PO Number heading requirements  
-- Rename Transaction Description to Cluster  
-- Added a balances sheet
+st.markdown('''**_Updates to V1.2:_**  
+            - Bug fixes regarding BCA files with no possitive commitments
+            - No balances sheet if there is no assets file
+            - Added Obligation grouping round 
 ''')
 
 st.markdown('---')

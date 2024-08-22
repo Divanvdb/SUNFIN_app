@@ -2,6 +2,8 @@
 
 Application to format Income Statements
 
+[Application](https://blank-app-awq6au0oktk.streamlit.app/)
+
 **_Dedication:_**  
 This app is dedicated to all the engineers out there that understand the importance of first engaging with customers towards clearly defining their basic requirements, 
 before designing a system for them to use. May this understanding spread widely and make apps like this one unnecessary...  
@@ -25,16 +27,21 @@ You are welcome to improve it by contacting divanvdb@sun.ac.za
    ```
 
 3. App updates 
-- Updates:
+**_Updates to V1.1:_**  
+- Removed Account Analyses  
+- Added functionality to extract_data_from_excel function  
+- Dropped NaN columns  
+- Ordered the columns differently with formatting  
+- Checking if assets and PO are None  
+- Fixed the PO Number heading requirements  
+- Rename Transaction Description to Cluster  
+- Added a balances sheet
 
-   - Removed acc_analyses_path
-   - Added while loop into extract_data_from_excel function
-   - Dropped nan columns
-   - Orderded the columns differently with formatting
-   - Checking if assets and PO are None
-   - Fixed the PO Number heading requirements
+**_Updates to V1.2:_**  
+- Bug fixes regarding BCA files with no possitive commitments
+- No balances sheet if there is no assets file
+- Added Obligation grouping round 
 
 4. TODO:
-
-   - Obligation grouping without commitment numbers
-   - Auto download
+- Auto download
+- Add threshold for transasction cancelling 

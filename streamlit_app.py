@@ -271,10 +271,13 @@ class ExcelProcessor:
                 new_cell = new_sheet.cell(row=r_idx, column=c_idx, value=value)
                 if r_idx == 1:
                     new_cell.font = Font(bold=True)
+                
+                if c_idx == 24: 
+                    new_cell.number_format = 'R#,##0.00'
         
         for col in new_sheet.columns:
             max_length = 0
-            column = col[0].column_letter  # Get the column name
+            column = col[0].column_letter  
             for cell in col:
                 try:
                     if len(str(cell.value)) > max_length:
@@ -302,6 +305,9 @@ class ExcelProcessor:
                     new_cell = new_sheet.cell(row=r_idx, column=c_idx, value=value)
                     if r_idx == 1:
                         new_cell.font = Font(bold=True)
+
+                    if c_idx == 2:  
+                        new_cell.number_format = 'R#,##0.00'
             
             for col in new_sheet.columns:
                 max_length = 0
@@ -337,7 +343,7 @@ class ExcelProcessor:
                 'Total consumption during period:',
                 'Total income during period:'
             ],
-            'Currency': [None] * 7 }
+            'Value': [None] * 7 }
         df = pd.DataFrame(data)
 
         formulas = [
@@ -352,7 +358,7 @@ class ExcelProcessor:
 
         # Update the DataFrame with the formulas
         for i, formula in enumerate(formulas):
-            df.at[i, 'Currency'] = formula
+            df.at[i, 'Value'] = formula
 
         return df
 
@@ -444,15 +450,13 @@ class ExcelProcessor:
 
         progress_placeholder.markdown(f"Processing: {50}% complete...")
 
-        self.df_sorted['Currency'] = self.df_sorted['Transaction Amount']
-
         column_order = ['Budget Account', 'Cost Center Segment Description', 'Account Description', 
                                    'Transaction Type', 'Transaction SubType', 'Transaction Action', 'Transaction Number', 
                                    'Expense Report Owner', 'Transaction Account', 'Transaction ID', 'Transaction Currency', 
                                    'Activity Type', 'Reservation Amount', 'Liquidation Transaction Type', 'Liquidation Transaction Number', 
                                    'Liquidation Amount', 'Commitment Nr', 'Obligation Nr', 'Expenditure Nr', 
                                    'Cluster', 'Project Code', 'Budget Date', 
-                                   'Balance Type', 'Currency', 'Item Description', 
+                                   'Balance Type', 'Transaction Amount', 'Item Description', 
                                    'Requester Name', 'Supplier Name', 'Item Category Description']
         
         existing_columns = [col for col in column_order if col in self.df_sorted.columns]

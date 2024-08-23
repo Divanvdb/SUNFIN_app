@@ -231,6 +231,11 @@ class ExcelProcessor:
     def concatenate_rows_by_po_number(self, df, group_by='Purchase Order Number'):
         return df.groupby(group_by).agg(lambda x: ' | '.join(x.astype(str))).reset_index()  
 
+    def create_file_name(self, filename):        
+        formatted_filename = " - ".join(filename.split(" - ")[:2]) + " - Output.xlsx"
+
+        return formatted_filename
+    
     def create_output_file(self, df, file_paths):
         new_workbook = Workbook()
         new_workbook.remove(new_workbook.active)  
@@ -281,6 +286,8 @@ class ExcelProcessor:
 
         new_sheet.auto_filter.ref = new_sheet.dimensions
 
+        new_sheet.freeze_panes = 'A2'
+
         progress_placeholder.markdown(f"Processing: {80}% complete...")
 
         # Add balances sheet
@@ -308,8 +315,6 @@ class ExcelProcessor:
                 adjusted_width = (max_length + 2)  # Adding a little extra space
                 new_sheet.column_dimensions[column].width = adjusted_width
 
-            new_sheet.auto_filter.ref = new_sheet.dimensions
-
         progress_placeholder.markdown(f"Processing: {90}% complete...")
 
         # Save workbook to BytesIO stream
@@ -332,7 +337,7 @@ class ExcelProcessor:
                 'Total consumption during period:',
                 'Total income during period:'
             ],
-            'Amount': [None] * 7 }
+            'Currency': [None] * 7 }
         df = pd.DataFrame(data)
 
         formulas = [
@@ -347,7 +352,7 @@ class ExcelProcessor:
 
         # Update the DataFrame with the formulas
         for i, formula in enumerate(formulas):
-            df.at[i, 'Amount'] = formula
+            df.at[i, 'Currency'] = formula
 
         return df
 
@@ -439,13 +444,15 @@ class ExcelProcessor:
 
         progress_placeholder.markdown(f"Processing: {50}% complete...")
 
+        self.df_sorted['Currency'] = self.df_sorted['Transaction Amount']
+
         column_order = ['Budget Account', 'Cost Center Segment Description', 'Account Description', 
                                    'Transaction Type', 'Transaction SubType', 'Transaction Action', 'Transaction Number', 
                                    'Expense Report Owner', 'Transaction Account', 'Transaction ID', 'Transaction Currency', 
                                    'Activity Type', 'Reservation Amount', 'Liquidation Transaction Type', 'Liquidation Transaction Number', 
                                    'Liquidation Amount', 'Commitment Nr', 'Obligation Nr', 'Expenditure Nr', 
                                    'Cluster', 'Project Code', 'Budget Date', 
-                                   'Balance Type', 'Transaction Amount', 'Item Description', 
+                                   'Balance Type', 'Currency', 'Item Description', 
                                    'Requester Name', 'Supplier Name', 'Item Category Description']
         
         existing_columns = [col for col in column_order if col in self.df_sorted.columns]
@@ -463,27 +470,34 @@ class ExcelProcessor:
 
 # Streamlit App
 
-st.title('Making Sense of SUNFIN V1.1')
+st.title('Making Sense of SUNFIN')
 
-st.markdown('''**_Dedication:_**  
-This app is dedicated to all the engineers out there that understand the importance of first engaging with customers towards clearly defining their basic requirements, 
+st.markdown('---')
+
+st.markdown('''Version: 1.3''')
+
+st.markdown('''This app is dedicated to all the engineers out there that understand the importance of first engaging with customers towards clearly defining their basic requirements, 
 before designing a system for them to use. May this understanding spread widely and make apps like this one unnecessary...  
 ''')
 
-st.markdown('''**_Disclaimer:_**  
-Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information.  
-You are welcome to improve it by accessing the source code here: [Github](https://github.com/Divanvdb/SUNFIN_app)  
+st.markdown('''Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information. 
+            You are welcome to improve it by accessing the source code here: [Github](https://github.com/Divanvdb/SUNFIN_app)
 ''')
 
 st.markdown('---')
 
 st.markdown('This app processes BCA, Assets and PO Details files and returns an updated Excel file.')
 
-st.markdown('''**_Updates to V1.2:_**  
-- Bug fixes regarding BCA files with no positive commitments  
-- No balances sheet if there is no assets file  
-- Added Obligation grouping round  
+st.markdown('''**_Updates to V1.3:_**   
+- Formatting based on Change Request #1
+
 ''')
+
+st.markdown('''**_TODO:_**  
+
+- Add threshold for transasction cancelling 
+''')
+
 st.markdown('---')
 
 progress_placeholder = st.empty()
@@ -503,7 +517,7 @@ if st.sidebar.button('Process'):
         st.download_button(
             label="Download Updated Excel",
             data=output_file,
-            file_name="Output.xlsx",
+            file_name=processor.create_file_name(bca_file.name),
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     else:

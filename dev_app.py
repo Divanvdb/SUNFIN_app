@@ -7,6 +7,7 @@ from openpyxl import load_workbook, Workbook
 import copy
 from openpyxl.styles import Font
 from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.utils import get_column_letter
 
 class ExcelProcessor:
     def __init__(self, bca_path = '', assets_path = '', po_details_path = ''):
@@ -262,7 +263,7 @@ class ExcelProcessor:
 
         progress_placeholder.markdown(f"Processing: {70}% complete...")
 
-        # Add new data
+        ##### Add new data
 
         new_sheet = new_workbook.create_sheet(title='Processed')
 
@@ -275,6 +276,7 @@ class ExcelProcessor:
                 if c_idx == 24: 
                     new_cell.number_format = 'R#,##0.00'
         
+        # Set column width based on content
         for col in new_sheet.columns:
             max_length = 0
             column = col[0].column_letter  
@@ -287,7 +289,20 @@ class ExcelProcessor:
             adjusted_width = (max_length + 2)  # Adding a little extra space
             new_sheet.column_dimensions[column].width = adjusted_width
 
+        # Set column width of first 16 columns
+        for col_idx in range(1, 17): 
+            col_letter = get_column_letter(col_idx)
+            new_sheet.column_dimensions[col_letter].width = 12.75 
+
+        # # Ignore rows with project code 'Ignore'
+        # project_code_col = 21
+        # for row in new_sheet.iter_rows(min_row=2, max_col=project_code_col, max_row=new_sheet.max_row):
+        #     project_code_value = row[project_code_col - 1].value
+        #     if project_code_value == "Ignore":
+        #         new_sheet.row_dimensions[row[0].row].hidden = True
+
         new_sheet.auto_filter.ref = new_sheet.dimensions
+        # new_sheet.auto_filter.add_filter_column(20, ['Ignore'], blank=False) 
 
         new_sheet.freeze_panes = 'A2'
 
@@ -450,6 +465,22 @@ class ExcelProcessor:
 
         progress_placeholder.markdown(f"Processing: {50}% complete...")
 
+        # Add account number descriptions
+        acc_num_desc = pd.read_excel('Account.numbers.table.xlsx')
+        unique_accounts = self.df_sorted['Transaction Account'].unique()
+        for trans_account in unique_accounts:
+            if trans_account is not None:
+                try:
+                    self.df_sorted.loc[self.df_sorted['Transaction Account'] == trans_account, 'Temp'] = acc_num_desc.loc[acc_num_desc['Acc No'] == int(trans_account.split('-')[2]), 'Account description'].item()
+                except:
+                    pass
+
+        self.df_sorted.loc[self.df_sorted['Item Description'] == '', 'Item Description'] = self.df_sorted['Temp']
+        self.df_sorted['Item Category Description'] =  self.df_sorted['Temp'] + ' | ' + self.df_sorted['Item Category Description'].astype(str) 
+        self.df_sorted = self.df_sorted.drop(columns=['Temp'])
+
+        # Create output file
+
         column_order = ['Budget Account', 'Cost Center Segment Description', 'Account Description', 
                                    'Transaction Type', 'Transaction SubType', 'Transaction Action', 'Transaction Number', 
                                    'Expense Report Owner', 'Transaction Account', 'Transaction ID', 'Transaction Currency', 
@@ -478,10 +509,10 @@ st.title('Making Sense of SUNFIN')
 
 st.markdown('---')
 
-st.markdown('''Version: 1.3''')
+st.markdown('''Version: 1.4''')
 
-st.markdown('''This app is dedicated to all the engineers out there that understand the importance of first engaging with customers towards clearly defining their basic requirements, 
-before designing a system for them to use. May this understanding spread widely and make apps like this one unnecessary...  
+st.markdown('''The fact that this app is required highlights the importance of first engaging with customers towards clearly defining their basic requirements, 
+            before designing a system for them to use. May this understanding spread more widely...  
 ''')
 
 st.markdown('''Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information. 
@@ -492,14 +523,13 @@ st.markdown('---')
 
 st.markdown('This app processes BCA, Assets and PO Details files and returns an updated Excel file.')
 
-st.markdown('''**_Updates to V1.3:_**   
-- Formatting based on Change Request #1
+st.markdown('''**_Updates to V1.4:_**   
+- Updated based on Change Request #2
 
 ''')
 
 st.markdown('''**_TODO:_**  
-
-- Add threshold for transasction cancelling 
+- Auto Ignore the cancelled transactions
 ''')
 
 st.markdown('---')

@@ -45,3 +45,6 @@ You are welcome to improve it by contacting divanvdb@sun.ac.za
 4. TODO:
 - Auto download
 - Add threshold for transasction cancelling 
+
+Hours:
+2 hours Monday 09/09

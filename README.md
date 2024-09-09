@@ -47,4 +47,4 @@ You are welcome to improve it by contacting divanvdb@sun.ac.za
 - Add threshold for transasction cancelling 
 
 Hours:
-2 hours Monday 09/09
+2.5 hours Monday 09/09

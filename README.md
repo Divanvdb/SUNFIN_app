@@ -2,15 +2,16 @@
 
 Application to format Income Statements
 
-[Application](https://blank-app-awq6au0oktk.streamlit.app/)
+Please find the online application here: [Application](https://blank-app-awq6au0oktk.streamlit.app/)
 
 **_Dedication:_**  
-This app is dedicated to all the engineers out there that understand the importance of first engaging with customers towards clearly defining their basic requirements, 
-before designing a system for them to use. May this understanding spread widely and make apps like this one unnecessary...  
+The fact that this app is required highlights the importance of first engaging with customers towards clearly defining their basic requirements, before designing a system for them to use. May this understanding spread more widely...
 
 **_Disclaimer:_**  
 Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information.  
 You are welcome to improve it by contacting divanvdb@sun.ac.za 
+
+_Note:_ The 'Guide to Making Sense of SunFin.pdf' instructions will explain how the input files are generated.
 
 ### How to run it on your own machine
 
@@ -40,11 +41,15 @@ You are welcome to improve it by contacting divanvdb@sun.ac.za
 **_Updates to V1.2:_**  
 - Bug fixes regarding BCA files with no possitive commitments
 - No balances sheet if there is no assets file
-- Added Obligation grouping round 
+- Added Obligation grouping round
+
+**_Updates to V1.3:_**
+- Format changes
+- Added Account_number_changes.xlsx
 
 4. TODO:
 - Auto download
 - Add threshold for transasction cancelling 
 
 Hours:
-2 hours Monday 09/09
+2.5 hours Monday 09/09

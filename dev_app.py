@@ -475,7 +475,11 @@ class ExcelProcessor:
                 except:
                     pass
 
-        self.df_sorted.loc[self.df_sorted['Item Description'] == '', 'Item Description'] = self.df_sorted['Temp']
+        # Remove this code once Prof Bekker is happy with the output
+        # self.df_sorted = self.df_sorted.loc[~self.df_sorted.index.duplicated(keep='first')]  
+        # self.df_sorted.loc[self.df_sorted['Item Description'] == '', 'Item Description'] = self.df_sorted['Temp']
+
+        self.df_sorted['Item Description'] =  self.df_sorted['Temp'] + ' | ' + self.df_sorted['Item Description'].astype(str) 
         self.df_sorted['Item Category Description'] =  self.df_sorted['Temp'] + ' | ' + self.df_sorted['Item Category Description'].astype(str) 
         self.df_sorted = self.df_sorted.drop(columns=['Temp'])
 
@@ -518,6 +522,22 @@ st.markdown('''The fact that this app is required highlights the importance of f
 st.markdown('''Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information. 
             You are welcome to improve it by accessing the source code here: [Github](https://github.com/Divanvdb/SUNFIN_app)
 ''')
+
+st.markdown('---')
+
+st.markdown('''Download the guide to _Making Sense of SUNFIN_ here: 
+''')
+
+with open('Guide_to_Making_Sense_of_SunFin.pdf', 'rb') as file:
+    pdf_data = file.read()
+
+# Provide the download button
+st.download_button(
+    label="Download User Guide",
+    data=pdf_data,
+    file_name='Guide_to_Making_Sense_of_SunFin.pdf',
+    mime='application/pdf'
+)
 
 st.markdown('---')
 

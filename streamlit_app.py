@@ -475,7 +475,11 @@ class ExcelProcessor:
                 except:
                     pass
 
-        self.df_sorted.loc[self.df_sorted['Item Description'] == '', 'Item Description'] = self.df_sorted['Temp']
+        # Remove this code once Prof Bekker is happy with the output
+        # self.df_sorted = self.df_sorted.loc[~self.df_sorted.index.duplicated(keep='first')]  
+        # self.df_sorted.loc[self.df_sorted['Item Description'] == '', 'Item Description'] = self.df_sorted['Temp']
+
+        self.df_sorted['Item Description'] =  self.df_sorted['Temp'] + ' | ' + self.df_sorted['Item Description'].astype(str) 
         self.df_sorted['Item Category Description'] =  self.df_sorted['Temp'] + ' | ' + self.df_sorted['Item Category Description'].astype(str) 
         self.df_sorted = self.df_sorted.drop(columns=['Temp'])
 
@@ -521,11 +525,28 @@ st.markdown('''Use the app at your own risk, and please don’t blame us if it d
 
 st.markdown('---')
 
+st.markdown('''Download the guide to _Making Sense of SUNFIN_ here: 
+''')
+
+with open('Guide_to_Making_Sense_of_SunFin.pdf', 'rb') as file:
+    pdf_data = file.read()
+
+# Provide the download button
+st.download_button(
+    label="Download User Guide",
+    data=pdf_data,
+    file_name='Guide_to_Making_Sense_of_SunFin.pdf',
+    mime='application/pdf'
+)
+
+st.markdown('---')
+
 st.markdown('This app processes BCA, Assets and PO Details files and returns an updated Excel file.')
 
 st.markdown('''**_Updates to V1.4:_**   
 - Updated based on Change Request #2
-
+- Bugfixes for Item Description and Item Category Description (added all available Item Descriptions)
+- Added Guide to Making Sense of SUNFIN
 ''')
 
 st.markdown('''**_TODO:_**  

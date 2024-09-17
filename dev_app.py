@@ -515,17 +515,8 @@ st.markdown('---')
 
 st.markdown('''Version: 1.4''')
 
-st.markdown('''The fact that this app is required highlights the importance of first engaging with customers towards clearly defining their basic requirements, 
-            before designing a system for them to use. May this understanding spread more widely...  
-''')
-
 st.markdown('''Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information. 
             You are welcome to improve it by accessing the source code here: [Github](https://github.com/Divanvdb/SUNFIN_app)
-''')
-
-st.markdown('---')
-
-st.markdown('''Download the guide to _Making Sense of SUNFIN_ here: 
 ''')
 
 with open('Guide_to_Making_Sense_of_SunFin.pdf', 'rb') as file:
@@ -538,19 +529,6 @@ st.download_button(
     file_name='Guide_to_Making_Sense_of_SunFin.pdf',
     mime='application/pdf'
 )
-
-st.markdown('---')
-
-st.markdown('This app processes BCA, Assets and PO Details files and returns an updated Excel file.')
-
-st.markdown('''**_Updates to V1.4:_**   
-- Updated based on Change Request #2
-
-''')
-
-st.markdown('''**_TODO:_**  
-- Auto Ignore the cancelled transactions
-''')
 
 st.markdown('---')
 

@@ -18,27 +18,27 @@ class ExcelProcessor:
         self.df_assets = pd.DataFrame()
         self.df_po = pd.DataFrame()
         self.df_sorted = pd.DataFrame()
-        self.po_order_number = 'Purchase Order Number'
-        self.balances = True
+        self.balances = False
         self.required_columns = ['Transaction Number', 'Balance Type', 'Transaction Amount', 
                     'Liquidation Transaction Number', 'Cluster', 
                     'Commitment Nr', 'Obligation Nr', 'Expenditure Nr']
         
         self.sheet_names = ['BCA']
+        self.file_paths = []
 
     def extract_data_from_excel(self, file_path, file_type='bca', verbose=False):
         workbook = load_workbook(filename=file_path)
 
-        found_target = False
-        
+        found_target = False        
 
+        # Set target value based on file type
         target_value = ''
-
         if file_type == 'bca':
             target_value='Budget Account'
         elif file_type == 'PO':
             target_value='Procurement Business Unit'
-        
+
+        # Look to find the target value in the first column of the first sheet        
         while not found_target:
             sheet = workbook.worksheets[0]
             num_rows = sheet.max_row
@@ -63,62 +63,68 @@ class ExcelProcessor:
                 df = pd.DataFrame(data, columns=headers)
 
             else:
-                print(f"'{target_value}' not found in the first column.")
+                # print(f"'{target_value}' not found in the first column.")
                 if file_type == 'PO':
                     target_value='Procurement Business Unit Name'
-                    self.po_order_number = 'Order Number'
 
-        if file_type == 'bca':
-            print('Reading BCA data\n')
-            df['Cluster'] = ''
-            df['Commitment Nr'] = ''
-            df['Obligation Nr'] = ''
-            df['Expenditure Nr'] = ''
-            df['Requester Name'] = ''
-            df['Supplier Name'] = ''
-            df['Item Description'] = ''
-            df['Item Category Description'] = ''
-            print(f'Shape of DataFrame:', df.shape)
-            
-            try:
-                df['Transaction Amount'] = df['Transaction Amount'].astype(str)
-                df['Transaction Amount'] = df['Transaction Amount'].str.replace(',', '')
-                df['Transaction Amount'] = df['Transaction Amount'].astype(float)
+        # Check if the DataFrame is empty
+        all_none = df.isnull().all().all()
 
-                df['Transaction Number'] = df['Transaction Number'].astype(str)
-            except:
-                print('Error converting Transaction Amount to float')
-
-            df_obligations = df[df['Balance Type'] == 'Obligation']
-            df_commitments = df[df['Balance Type'] == 'Commitment']
-            df_budget = df[df['Balance Type'] == 'Budget']
-            df_expenditures = df[df['Balance Type'] == 'Expenditure']
-
-            # Check if liquidation transaction number is in the transaction number column
-            self.missing_columns = [col for col in self.required_columns if col not in df.columns]
-
-            if not self.missing_columns:
-                st.markdown("All required columns are present in the dataframe.")
-            else:
-                st.markdown("The following columns are missing:", self.missing_columns)
-            
-
-            if verbose:
-
-                print(f'Before operations:\n\n')
-                print(f'Obligations: {df_obligations.shape}')
-                print(f'Commitments: {df_commitments.shape}')
-                print(f'Budget: {df_budget.shape}')
-                print(f'Expenditures: {df_expenditures.shape}')
-
-                print(f'Total: {df_obligations.shape[0] + df_commitments.shape[0] + df_budget.shape[0] + df_expenditures.shape[0]}\n')
-
-                print('The sum of all the transactions in the different categories are:')
-                print(f"Obligation Sum: {df_obligations['Transaction Amount'].sum()}\nCommitment Sum: {df_commitments['Transaction Amount'].sum()}\nBudget Sum: {df_budget['Transaction Amount'].sum()}\nExpenditure Sum: {df_expenditures['Transaction Amount'].sum()}")
-
-            return df
+        if all_none:
+            return None
         else:
-            return df
+            if file_type == 'bca':
+                # print('Reading BCA data\n')
+                df['Cluster'] = ''
+                df['Commitment Nr'] = ''
+                df['Obligation Nr'] = ''
+                df['Expenditure Nr'] = ''
+                df['Requester Name'] = ''
+                df['Supplier Name'] = ''
+                df['Item Description'] = ''
+                df['Item Category Description'] = ''
+                # print(f'Shape of DataFrame:', df.shape)
+                
+                try:
+                    df['Transaction Amount'] = df['Transaction Amount'].astype(str)
+                    df['Transaction Amount'] = df['Transaction Amount'].str.replace(',', '')
+                    df['Transaction Amount'] = df['Transaction Amount'].astype(float)
+
+                    df['Transaction Number'] = df['Transaction Number'].astype(str)
+                except:
+                    print('Error converting Transaction Amount to float')
+
+                df_obligations = df[df['Balance Type'] == 'Obligation']
+                df_commitments = df[df['Balance Type'] == 'Commitment']
+                df_budget = df[df['Balance Type'] == 'Budget']
+                df_expenditures = df[df['Balance Type'] == 'Expenditure']
+
+                # Check if liquidation transaction number is in the transaction number column
+                self.missing_columns = [col for col in self.required_columns if col not in df.columns]
+
+                if not self.missing_columns:
+                    # st.markdown("All required columns are present in the dataframe.")
+                    pass
+                else:
+                    st.markdown("The following columns are missing:", self.missing_columns)
+                
+
+                if verbose:
+
+                    print(f'Before operations:\n\n')
+                    print(f'Obligations: {df_obligations.shape}')
+                    print(f'Commitments: {df_commitments.shape}')
+                    print(f'Budget: {df_budget.shape}')
+                    print(f'Expenditures: {df_expenditures.shape}')
+
+                    print(f'Total: {df_obligations.shape[0] + df_commitments.shape[0] + df_budget.shape[0] + df_expenditures.shape[0]}\n')
+
+                    print('The sum of all the transactions in the different categories are:')
+                    print(f"Obligation Sum: {df_obligations['Transaction Amount'].sum()}\nCommitment Sum: {df_commitments['Transaction Amount'].sum()}\nBudget Sum: {df_budget['Transaction Amount'].sum()}\nExpenditure Sum: {df_expenditures['Transaction Amount'].sum()}")
+
+                return df
+            else:
+                return df
 
     def add_descriptions(self, df, numbers):
         for i in range(len(numbers)):
@@ -377,12 +383,44 @@ class ExcelProcessor:
 
         return df
 
-    def process(self):
-        # BCA setup 
-        file_paths = []
-        self.df_bca = self.extract_data_from_excel(self.bca_path, verbose=False)
+    def extract_and_check_data(self):
+        # Extract data from the BCA file
+        if self.bca_path is not None:
+            self.df_bca = self.extract_data_from_excel(self.bca_path, verbose=False)
+        else:
+            self.df_bca = None
 
-        file_paths.append(self.bca_path)
+        # Extract data from the Assets file if provided
+        if self.assets_path is not None:
+            self.df_assets = self.extract_data_from_excel(self.assets_path, verbose=False)
+        else:
+            self.df_assets = None
+
+        # Extract data from the PO Details file if provided
+        if self.po_details_path is not None:
+            self.df_po = self.extract_data_from_excel(self.po_details_path, file_type='PO', verbose=False)
+        else:
+            self.df_po = None
+
+        # Check if the extracted data is None
+        bca_exists = self.df_bca is not None
+        assets_exists = self.df_assets is not None
+        po_exists = self.df_po is not None
+
+        # Provide feedback based on the existence of the data
+        if not bca_exists:
+            st.markdown('BCA data is None. Please ensure that the SUNFIN Sheet has transactions.')
+        if (not assets_exists) & (self.assets_path is not None):
+            st.markdown('Assets data is None.')
+        if (self.po_details_path is not None) & (not po_exists):
+            st.markdown('PO Details data is None.')
+
+        # Return a tuple of True/False for each file
+        return bca_exists, assets_exists, po_exists
+
+    # 10% Completion
+    def process_bca(self):
+        self.file_paths.append(self.bca_path)
 
         # Debugging line
         # self.df_bca = self.df_bca.loc[(self.df_bca['Balance Type'] != 'Budget'), ['Transaction Number', 'Balance Type', 'Transaction Amount', 'Liquidation Transaction Number', 
@@ -392,30 +430,19 @@ class ExcelProcessor:
         self.df_bca = self.df_bca.loc[(self.df_bca['Balance Type'] != 'Budget')]
         self.df_bca = self.df_bca.drop(columns=[col for col in self.df_bca.columns if col is None])
 
-        progress_placeholder.markdown(f"Processing: {10}% complete...")
+    # 20% Completion
+    def process_assets(self):
+        self.sheet_names.append('BCA Assets')
+        self.file_paths.append(self.assets_path)
 
-        # Assets setup
-        if self.assets_path is not None:
-            self.sheet_names.append('BCA Assets')
-            file_paths.append(self.assets_path)
-            self.df_assets = self.extract_data_from_excel(self.assets_path, verbose=False)
+        self.df_assets = self.df_assets.loc[(self.df_assets['Balance Type'] != 'Budget')]
+        self.df_assets = self.df_assets.drop(columns=[col for col in self.df_assets.columns if col is None])
+        self.df_bca = pd.concat([self.df_bca, self.df_assets])
 
-            self.df_assets = self.df_assets.loc[(self.df_assets['Balance Type'] != 'Budget')]
-            self.df_assets = self.df_assets.drop(columns=[col for col in self.df_assets.columns if col is None])
+        self.balances = True
 
-            all_none = (self.df_assets['Transaction Amount'] == 'None').all()
-
-            if all_none:
-                st.markdown(f"**_Note:_** Assets are None")
-            else:
-                self.df_bca = pd.concat([self.df_bca, self.df_assets])
-        else:
-            self.balances = False
-
-        # BCA and Assets processing
-
-        progress_placeholder.markdown(f"Processing: {20}% complete...")
-
+    # 30% Completion
+    def process_transactions(self):
         comm_numbers = self.df_bca.loc[(self.df_bca['Transaction Amount'] > 0) & (self.df_bca['Balance Type'] == 'Commitment'), 'Transaction Number'].unique()
 
         self.df_bca = self.add_descriptions(self.df_bca, comm_numbers)
@@ -437,35 +464,29 @@ class ExcelProcessor:
         else:
             self.df_sorted =self.group_and_sort(self.df_sorted, ob_numbers, offset=len(comm_numbers))
 
-        progress_placeholder.markdown(f"Processing: {30}% complete...")
+    # 40% Completion
+    def process_po(self):
+        self.sheet_names.append('PO Details')
+        self.file_paths.append(self.po_details_path)
 
-        # PO Details setup
-        if self.po_details_path is not None:
-            self.sheet_names.append('PO Details')
-            file_paths.append(self.po_details_path)
-            self.df_po = self.extract_data_from_excel(self.po_details_path, file_type='PO', verbose=True)
+        columns = self.df_po.iloc[:, [1, 2, 6, 15, 16]].columns
 
-            progress_placeholder.markdown(f"Processing: {40}% complete...")
+        self.df_po = self.df_po[[columns[0], columns[1], columns[2], columns[3], columns[4]]]
 
-            all_columns_none = self.df_po.isna().all().all()
+        self.df_po_concatenated = self.concatenate_rows_by_po_number(self.df_po, group_by=columns[0])
 
-            if not all_columns_none:
-                self.df_po = self.df_po[[self.po_order_number, 'Requester Name', 'Supplier Name', 'Item Description', 'Item Category Description']]
-                self.df_po_concatenated = self.concatenate_rows_by_po_number(self.df_po, group_by=self.po_order_number)
+        po_numbers = self.df_po_concatenated[columns[0]].unique()
 
-                po_numbers = self.df_po_concatenated[self.po_order_number].unique()
+        for po_number in po_numbers:
+            self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Item Description'] = self.df_po_concatenated.loc[self.df_po_concatenated[columns[0]] == po_number, columns[3]].values[0]
+            self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Item Category Description'] = self.df_po_concatenated.loc[self.df_po_concatenated[columns[0]] == po_number, columns[4]].values[0]
+            self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Requester Name'] = self.df_po_concatenated.loc[self.df_po_concatenated[columns[0]] == po_number, columns[1]].values[0]
+            self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Supplier Name'] = self.df_po_concatenated.loc[self.df_po_concatenated[columns[0]] == po_number, columns[2]].values[0] 
 
-                for po_number in po_numbers:
-                    self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Item Description'] = self.df_po_concatenated.loc[self.df_po_concatenated[self.po_order_number] == po_number, 'Item Description'].values[0]
-                    self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Item Category Description'] = self.df_po_concatenated.loc[self.df_po_concatenated[self.po_order_number] == po_number, 'Item Category Description'].values[0]
-                    self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Requester Name'] = self.df_po_concatenated.loc[self.df_po_concatenated[self.po_order_number] == po_number, 'Requester Name'].values[0]
-                    self.df_sorted.loc[(self.df_sorted['Obligation Nr'] == po_number) | (self.df_sorted['Transaction Number'] == po_number), 'Supplier Name'] = self.df_po_concatenated.loc[self.df_po_concatenated[self.po_order_number] == po_number, 'Supplier Name'].values[0] 
-            else:
-                st.markdown(f"**_Note:_** PO Details are None")
+        progress_placeholder.markdown(f"Processing: {40}% complete...")
 
-        progress_placeholder.markdown(f"Processing: {50}% complete...")
-
-        # Add account number descriptions
+    # 50% Completion
+    def process_accounts(self):
         acc_num_desc = pd.read_excel('Account.numbers.table.xlsx')
         unique_accounts = self.df_sorted['Transaction Account'].unique()
         for trans_account in unique_accounts:
@@ -475,16 +496,13 @@ class ExcelProcessor:
                 except:
                     pass
 
-        # Remove this code once Prof Bekker is happy with the output
-        # self.df_sorted = self.df_sorted.loc[~self.df_sorted.index.duplicated(keep='first')]  
-        # self.df_sorted.loc[self.df_sorted['Item Description'] == '', 'Item Description'] = self.df_sorted['Temp']
+        if 'Temp' in self.df_sorted.columns:
+            self.df_sorted['Item Description'] =  self.df_sorted['Temp'] + ' | ' + self.df_sorted['Item Description'].astype(str) 
+            self.df_sorted['Item Category Description'] =  self.df_sorted['Temp'] + ' | ' + self.df_sorted['Item Category Description'].astype(str) 
+            self.df_sorted = self.df_sorted.drop(columns=['Temp'])
 
-        self.df_sorted['Item Description'] =  self.df_sorted['Temp'] + ' | ' + self.df_sorted['Item Description'].astype(str) 
-        self.df_sorted['Item Category Description'] =  self.df_sorted['Temp'] + ' | ' + self.df_sorted['Item Category Description'].astype(str) 
-        self.df_sorted = self.df_sorted.drop(columns=['Temp'])
-
-        # Create output file
-
+    # 60% Completion to 100% Completion
+    def process_output(self):        
         column_order = ['Budget Account', 'Cost Center Segment Description', 'Account Description', 
                                    'Transaction Type', 'Transaction SubType', 'Transaction Action', 'Transaction Number', 
                                    'Expense Report Owner', 'Transaction Account', 'Transaction ID', 'Transaction Currency', 
@@ -500,7 +518,7 @@ class ExcelProcessor:
         self.df_sorted = self.df_sorted.reindex(columns=existing_columns)
 
         progress_placeholder.markdown(f"Processing: {60}% complete...")
-        output_file = self.create_output_file(self.df_sorted, file_paths)
+        output_file = self.create_output_file(self.df_sorted, self.file_paths)
         progress_placeholder.markdown(f"Processing: {100}% complete...")
 
         return output_file
@@ -543,14 +561,40 @@ if st.sidebar.button('Process'):
     if bca_file:
         st.write("Files uploaded successfully. Processing will start...")
         processor = ExcelProcessor(bca_file, assets_file, po_file)
-        output_file = processor.process()
-        st.write("Processing complete!")
-        # st.markdown(f"[Download the output file]")
-        st.download_button(
-            label="Download Updated Excel",
-            data=output_file,
-            file_name=processor.create_file_name(bca_file.name),
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+
+        bca_, asts_, po_ = processor.extract_and_check_data()
+
+        if bca_:
+            processor.process_bca()
+
+            progress_placeholder.markdown(f"Processing: {10}% complete...")
+
+            if asts_:
+                processor.process_assets()
+
+            progress_placeholder.markdown(f"Processing: {20}% complete...")
+
+            processor.process_transactions()
+
+            progress_placeholder.markdown(f"Processing: {30}% complete...")
+
+            if po_:
+                processor.process_po()
+
+            progress_placeholder.markdown(f"Processing: {40}% complete...")
+
+            processor.process_accounts()
+
+            progress_placeholder.markdown(f"Processing: {50}% complete...")
+
+            output_file = processor.process_output()
+
+            st.download_button(
+                label="Download Updated Excel",
+                data=output_file,
+                file_name=processor.create_file_name(bca_file.name),
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
     else:
         st.error("Please upload all required files.")

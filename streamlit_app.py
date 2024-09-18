@@ -531,7 +531,7 @@ st.title('Making Sense of SUNFIN')
 
 st.markdown('---')
 
-st.markdown('''Version: 1.4''')
+st.markdown('''Version: 1.5''')
 
 st.markdown('''Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information. 
             You are welcome to improve it by accessing the source code here: [Github](https://github.com/Divanvdb/SUNFIN_app)

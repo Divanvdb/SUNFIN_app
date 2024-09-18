@@ -164,4 +164,5 @@ cython_debug/
 #.idea/
 
 /Verslae
+/Test_Verslae
 Test.ipynb

@@ -2,9 +2,17 @@ import streamlit as st
 
 import pandas as pd
 import numpy as np
+
 from io import BytesIO
+
+import zipfile
+import tempfile
+import os
+
 from openpyxl import load_workbook, Workbook
+
 import copy
+
 from openpyxl.styles import Font
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.utils import get_column_letter
@@ -267,7 +275,7 @@ class ExcelProcessor:
             for merged_range in sheet.merged_cells.ranges:
                 new_sheet.merge_cells(str(merged_range))
 
-        progress_placeholder.markdown(f"Processing: {70}% complete...")
+        progress_placeholder.markdown(f"Current processing: {70}% complete...")
 
         ##### Add new data
 
@@ -312,7 +320,7 @@ class ExcelProcessor:
 
         new_sheet.freeze_panes = 'A2'
 
-        progress_placeholder.markdown(f"Processing: {80}% complete...")
+        progress_placeholder.markdown(f"Current processing: {80}% complete...")
 
         # Add balances sheet
         if self.balances:
@@ -342,7 +350,7 @@ class ExcelProcessor:
                 adjusted_width = (max_length + 2)  # Adding a little extra space
                 new_sheet.column_dimensions[column].width = adjusted_width
 
-        progress_placeholder.markdown(f"Processing: {90}% complete...")
+        progress_placeholder.markdown(f"Current processing: {90}% complete...")
 
         # Save workbook to BytesIO stream
 
@@ -364,22 +372,50 @@ class ExcelProcessor:
                 'Total consumption during period:',
                 'Total income during period:'
             ],
-            'Value': [None] * 7 }
+            'BCA': [None] * 7 ,
+            'BCA Assets': [None] * 7,
+            'Total': [None] * 7}
         df = pd.DataFrame(data)
 
-        formulas = [
-            "=BCA!D4+'BCA Assets'!D4",
-            "=BCA!K4+'BCA Assets'!K4",
-            "=BCA!AA23+'BCA Assets'!AA23",
-            "=BCA!AD23+'BCA Assets'!AD23",
-            "=BCA!AI23+'BCA Assets'!AI23",
-            "=BCA!G4+'BCA Assets'!G4",
+        formulas_bca = [
+            "=BCA!D4",
+            "=BCA!K4",
+            "=BCA!AA23",
+            "=BCA!AD23",
+            "=BCA!AI23",
+            "=BCA!G4",
             "=B3-(B2-B7)"
         ]
 
+        formulas_assets = [
+            "==IF(ISNUMBER('BCA Assets'!D4),'BCA Assets'!D4,0)",
+            "==IF(ISNUMBER('BCA Assets'!K4),'BCA Assets'!K4,0)",
+            "==IF(ISNUMBER('BCA Assets'!AA23),'BCA Assets'!AA23,0)",
+            "==IF(ISNUMBER('BCA Assets'!AD23),'BCA Assets'!AD23,0)",
+            "==IF(ISNUMBER('BCA Assets'!AI23),'BCA Assets'!AI23,0)",
+            "==IF(ISNUMBER('BCA Assets'!G4),'BCA Assets'!G4,0)",
+            "=C3-(C2-C7)"
+        ]
+
+        formulas_total = [
+            "=B2+C2",
+            "=B3+C3",
+            "=B4+C4",
+            "=B5+C5",
+            "=B6+C6",
+            "=B7+C7",
+            "=B8+C8"
+        ]
+
         # Update the DataFrame with the formulas
-        for i, formula in enumerate(formulas):
-            df.at[i, 'Value'] = formula
+        for i, formula in enumerate(formulas_bca):
+            df.at[i, 'BCA'] = formula
+
+        for i, formula in enumerate(formulas_assets):
+            df.at[i, 'BCA Assets'] = formula
+
+        for i, formula in enumerate(formulas_total):
+            df.at[i, 'Total'] = formula
 
         return df
 
@@ -517,15 +553,48 @@ class ExcelProcessor:
         
         self.df_sorted = self.df_sorted.reindex(columns=existing_columns)
 
-        progress_placeholder.markdown(f"Processing: {60}% complete...")
+        progress_placeholder.markdown(f"Current processing: {60}% complete...")
         output_file = self.create_output_file(self.df_sorted, self.file_paths)
-        progress_placeholder.markdown(f"Processing: {100}% complete...")
+        progress_placeholder.markdown(f"Current processing: {100}% complete...")
 
         return output_file
         
+    def auto_process(self):
+        bca_, asts_, po_ = self.extract_and_check_data()
 
+        if bca_:
+            self.process_bca()
+
+            progress_placeholder.markdown(f"Current processing: {10}% complete...")
+
+            if asts_:
+                self.process_assets()
+
+            progress_placeholder.markdown(f"Current processing: {20}% complete...")
+
+            self.process_transactions()
+
+            progress_placeholder.markdown(f"Current processing: {30}% complete...")
+
+            if po_:
+                self.process_po()
+
+            progress_placeholder.markdown(f"Current processing: {40}% complete...")
+
+            self.process_accounts()
+
+            progress_placeholder.markdown(f"Current processing: {50}% complete...")
+
+            output_file = self.process_output()
+
+            return output_file
+
+        else:
+            return None
 
 # Streamlit App
+
+## Title
 
 st.title('Making Sense of SUNFIN')
 
@@ -537,10 +606,10 @@ st.markdown('''Use the app at your own risk, and please don’t blame us if it d
             You are welcome to improve it by accessing the source code here: [Github](https://github.com/Divanvdb/SUNFIN_app)
 ''')
 
+## Download Guide to SUNFIN
 with open('Guide_to_Making_Sense_of_SunFin.pdf', 'rb') as file:
     pdf_data = file.read()
 
-# Provide the download button
 st.download_button(
     label="Download User Guide",
     data=pdf_data,
@@ -550,51 +619,132 @@ st.download_button(
 
 st.markdown('---')
 
+## Sidebar with file upload options
+
 progress_placeholder = st.empty()
 
-st.sidebar.header('Upload Files')
-bca_file = st.sidebar.file_uploader("Upload BCA File", type=["xlsx"])
-assets_file = st.sidebar.file_uploader("Upload Assets File", type=["xlsx"])
-po_file = st.sidebar.file_uploader("Upload PO Details File", type=["xlsx"])
+st.sidebar.header('Upload Files from Folder')
+
+bca_file, assets_file, po_file = None, None, None
+
+uploaded_files = st.sidebar.file_uploader("Upload Files from Folder", type=["xlsx"], accept_multiple_files=True)
+
+st.sidebar.header('Upload Files Individually')
+
+bca_file_individual = st.sidebar.file_uploader("Upload BCA File", type=["xlsx"])
+assets_file_individual = st.sidebar.file_uploader("Upload Assets File", type=["xlsx"])
+po_file_individual = st.sidebar.file_uploader("Upload PO Details File", type=["xlsx"])
+
+unique_ids = []
+if uploaded_files:
+    
+    for uploaded_file in uploaded_files:
+        extracted_value = uploaded_file.name.split(' - ')[0]
+        
+        if extracted_value not in unique_ids:
+            if '.xlsx' not in extracted_value:
+                unique_ids.append(extracted_value)
+else:
+    bca_file = bca_file_individual
+    assets_file = assets_file_individual
+    po_file = po_file_individual
+
+## Processing function
 
 if st.sidebar.button('Process'):
-    if bca_file:
-        st.write("Files uploaded successfully. Processing will start...")
-        processor = ExcelProcessor(bca_file, assets_file, po_file)
 
-        bca_, asts_, po_ = processor.extract_and_check_data()
+    if (bca_file is not None) | (len(unique_ids) >= 1):
 
-        if bca_:
-            processor.process_bca()
+        if len(unique_ids) >= 1:
+            output_files = []
+            output_names = []
+            st.write("Multiple files uploaded successfully. Processing will start...")
 
-            progress_placeholder.markdown(f"Processing: {10}% complete...")
+            st.write(unique_ids)
+            for i, unique_id in enumerate(unique_ids):
+                bca_file, assets_file, po_file = None, None, None
+                for uploaded_file in uploaded_files:
+                    if unique_id in uploaded_file.name:
+                        if "Assets" in uploaded_file.name or "asset" in uploaded_file.name or 'Assets' in uploaded_file.name:
+                            assets_file = uploaded_file
+                        elif "4 - BudgetaryControlAnalysis" in uploaded_file.name or "BCA" in uploaded_file.name:
+                            bca_file = uploaded_file
+                        elif "PO" in uploaded_file.name or "PODetails" in uploaded_file.name:
+                            po_file = uploaded_file
 
-            if asts_:
-                processor.process_assets()
+                st.write(f"**{i + 1} / {len(unique_ids)}** - Files uploaded successfully for **{unique_id}**:")
+                if bca_file is not None:
+                    st.write(f"- BCA: {bca_file.name}")
+                if assets_file is not None:
+                    st.write(f"- BCA Assets: {assets_file.name}")
+                if po_file is not None:
+                    st.write(f"- PO File: {po_file.name}")
 
-            progress_placeholder.markdown(f"Processing: {20}% complete...")
+                if bca_file:
+                    processor = ExcelProcessor(bca_file, assets_file, po_file)
 
-            processor.process_transactions()
+                    st.write(f"Processing unique ID: {unique_id}")
+                    output = processor.auto_process()
+                    output_files.append(output)
 
-            progress_placeholder.markdown(f"Processing: {30}% complete...")
+                    output_name = processor.create_file_name(bca_file.name)
+                    output_names.append(output_name)
 
-            if po_:
-                processor.process_po()
+                    st.write("**Completed processing for**", unique_id)
+                else:
+                    st.write(f"**No BCA file found for** {unique_id}")
 
-            progress_placeholder.markdown(f"Processing: {40}% complete...")
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+                for output_file, output_name in zip(output_files, output_names):
 
-            processor.process_accounts()
+                    if isinstance(output_file, BytesIO):
+                        # Create a temporary file
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+                            temp_file.write(output_file.getvalue())  # Write the BytesIO content to the temp file
+                            temp_file_path = temp_file.name  # Store the temporary file path
 
-            progress_placeholder.markdown(f"Processing: {50}% complete...")
+                        # Add the temporary file to the ZIP
+                        zip_file.write(temp_file_path, arcname=output_name)
 
-            output_file = processor.process_output()
+                        # Clean up: Delete the temporary file after adding to the ZIP
+                        os.remove(temp_file_path)
+                    else:
+                        # If output_file is already a file path, just add it directly
+                        zip_file.write(output_file, arcname=output_name)
+
+            zip_buffer.seek(0)
 
             st.download_button(
-                label="Download Updated Excel",
-                data=output_file,
-                file_name=processor.create_file_name(bca_file.name),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                label="Download All Updated Excel Files",
+                data=zip_buffer,
+                file_name="output_files.zip",
+                mime="application/zip"
             )
+        else:
+            if bca_file is not None:
+                st.write(f"Files uploaded successfully:")
+                st.write(f"- BCA: {bca_file.name}")
+
+                if assets_file is not None:
+                    st.write(f"- BCA Assets: {assets_file.name}")
+                if po_file is not None:
+                    st.write(f"- PO File: {po_file.name}")
+
+                processor = ExcelProcessor(bca_file, assets_file, po_file)
+
+                output_file = processor.auto_process()
+
+                st.write("**Completed processing.**")
+
+                st.download_button(
+                            label="Download Updated Excel",
+                            data=output_file,
+                            file_name=processor.create_file_name(bca_file.name),
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+            else:
+                st.error("Please upload the BCA file.")
 
     else:
         st.error("Please upload all required files.")

@@ -323,32 +323,31 @@ class ExcelProcessor:
         progress_placeholder.markdown(f"Current processing: {80}% complete...")
 
         # Add balances sheet
-        if self.balances:
 
-            df_balances = self.get_balances()
+        df_balances = self.get_balances()
 
-            new_sheet = new_workbook.create_sheet(title='Balances')
+        new_sheet = new_workbook.create_sheet(title='Balances')
 
-            for r_idx, row in enumerate(dataframe_to_rows(df_balances, index=False, header=True), 1):
-                for c_idx, value in enumerate(row, 1):
-                    new_cell = new_sheet.cell(row=r_idx, column=c_idx, value=value)
-                    if r_idx == 1:
-                        new_cell.font = Font(bold=True)
+        for r_idx, row in enumerate(dataframe_to_rows(df_balances, index=False, header=True), 1):
+            for c_idx, value in enumerate(row, 1):
+                new_cell = new_sheet.cell(row=r_idx, column=c_idx, value=value)
+                if r_idx == 1:
+                    new_cell.font = Font(bold=True)
 
-                    if c_idx == 2:  
-                        new_cell.number_format = 'R#,##0.00'
-            
-            for col in new_sheet.columns:
-                max_length = 0
-                column = col[0].column_letter  # Get the column name
-                for cell in col:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(cell.value)
-                    except:
-                        pass
-                adjusted_width = (max_length + 2)  # Adding a little extra space
-                new_sheet.column_dimensions[column].width = adjusted_width
+                if c_idx == 2:  
+                    new_cell.number_format = 'R#,##0.00'
+        
+        for col in new_sheet.columns:
+            max_length = 0
+            column = col[0].column_letter  # Get the column name
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(cell.value)
+                except:
+                    pass
+            adjusted_width = (max_length + 2)  # Adding a little extra space
+            new_sheet.column_dimensions[column].width = adjusted_width
 
         progress_placeholder.markdown(f"Current processing: {90}% complete...")
 
@@ -387,35 +386,37 @@ class ExcelProcessor:
             "=B3-(B2-B7)"
         ]
 
-        formulas_assets = [
-            "==IF(ISNUMBER('BCA Assets'!D4),'BCA Assets'!D4,0)",
-            "==IF(ISNUMBER('BCA Assets'!K4),'BCA Assets'!K4,0)",
-            "==IF(ISNUMBER('BCA Assets'!AA23),'BCA Assets'!AA23,0)",
-            "==IF(ISNUMBER('BCA Assets'!AD23),'BCA Assets'!AD23,0)",
-            "==IF(ISNUMBER('BCA Assets'!AI23),'BCA Assets'!AI23,0)",
-            "==IF(ISNUMBER('BCA Assets'!G4),'BCA Assets'!G4,0)",
-            "=C3-(C2-C7)"
-        ]
+        if self.balances:
+            formulas_assets = [
+                "==IF(ISNUMBER('BCA Assets'!D4),'BCA Assets'!D4,0)",
+                "==IF(ISNUMBER('BCA Assets'!K4),'BCA Assets'!K4,0)",
+                "==IF(ISNUMBER('BCA Assets'!AA23),'BCA Assets'!AA23,0)",
+                "==IF(ISNUMBER('BCA Assets'!AD23),'BCA Assets'!AD23,0)",
+                "==IF(ISNUMBER('BCA Assets'!AI23),'BCA Assets'!AI23,0)",
+                "==IF(ISNUMBER('BCA Assets'!G4),'BCA Assets'!G4,0)",
+                "=C3-(C2-C7)"
+            ]
 
-        formulas_total = [
-            "=B2+C2",
-            "=B3+C3",
-            "=B4+C4",
-            "=B5+C5",
-            "=B6+C6",
-            "=B7+C7",
-            "=B8+C8"
-        ]
+            formulas_total = [
+                "=B2+C2",
+                "=B3+C3",
+                "=B4+C4",
+                "=B5+C5",
+                "=B6+C6",
+                "=B7+C7",
+                "=B8+C8"
+            ]
 
         # Update the DataFrame with the formulas
         for i, formula in enumerate(formulas_bca):
             df.at[i, 'BCA'] = formula
 
-        for i, formula in enumerate(formulas_assets):
-            df.at[i, 'BCA Assets'] = formula
+        if self.balances:
+            for i, formula in enumerate(formulas_assets):
+                df.at[i, 'BCA Assets'] = formula
 
-        for i, formula in enumerate(formulas_total):
-            df.at[i, 'Total'] = formula
+            for i, formula in enumerate(formulas_total):
+                df.at[i, 'Total'] = formula
 
         return df
 
@@ -445,11 +446,11 @@ class ExcelProcessor:
 
         # Provide feedback based on the existence of the data
         if not bca_exists:
-            st.markdown('BCA data is None. Please ensure that the SUNFIN Sheet has transactions.')
+            st.warning('BCA file is empty. Please ensure that the SUNFIN Sheet has transactions.')
         if (not assets_exists) & (self.assets_path is not None):
-            st.markdown('Assets data is None.')
+            st.warning('BCA Assets file is empty.')
         if (self.po_details_path is not None) & (not po_exists):
-            st.markdown('PO Details data is None.')
+            st.warning('PO Details file is empty.')
 
         # Return a tuple of True/False for each file
         return bca_exists, assets_exists, po_exists
@@ -485,7 +486,7 @@ class ExcelProcessor:
         self.df_reduced = self.df_bca.loc[(self.df_bca['Balance Type'] != 'Budget')]
 
         if comm_numbers.size == 0:
-            st.markdown(f"**_Note:_** No possitive commitments found")
+            print(f"**_Note:_** No new commitments have been ")
             self.df_sorted = self.df_reduced
         else:
             self.df_sorted = self.group_and_sort(self.df_reduced, comm_numbers)
@@ -496,7 +497,7 @@ class ExcelProcessor:
         
         if ob_numbers.size == 0:
             if comm_numbers.size == 0:
-                st.markdown(f"**_Note:_** No possitive obligations found")
+                print(f"**_Note:_** No possitive obligations found")
         else:
             self.df_sorted =self.group_and_sort(self.df_sorted, ob_numbers, offset=len(comm_numbers))
 
@@ -600,7 +601,7 @@ st.title('Making Sense of SUNFIN')
 
 st.markdown('---')
 
-st.markdown('''Version: 1.6''')
+st.markdown('''Version: 1.6 - Last Updated 2024/10/16''')
 
 st.markdown('''Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information. 
             You are welcome to improve it by accessing the source code here: [Github](https://github.com/Divanvdb/SUNFIN_app)
@@ -683,16 +684,20 @@ if st.sidebar.button('Process'):
                 if bca_file:
                     processor = ExcelProcessor(bca_file, assets_file, po_file)
 
-                    st.write(f"Processing unique ID: {unique_id}")
-                    output = processor.auto_process()
-                    output_files.append(output)
+                    progress_placeholder = st.empty()
 
-                    output_name = processor.create_file_name(bca_file.name)
-                    output_names.append(output_name)
+                    try:
+                        output = processor.auto_process()
+                        output_files.append(output)
 
-                    st.write("**Completed processing for**", unique_id)
+                        output_name = processor.create_file_name(bca_file.name)
+                        output_names.append(output_name)
+
+                        st.success(f"**Completed processing for** {unique_id}")
+                    except:
+                        st.error(f"**Error processing** {unique_id}")
                 else:
-                    st.write(f"**No BCA file found for** {unique_id}")
+                    st.error(f"**No BCA file found for** {unique_id}")
 
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w') as zip_file:

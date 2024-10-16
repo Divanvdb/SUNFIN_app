@@ -27,7 +27,7 @@ _Note:_ The 'Guide to Making Sense of SunFin.pdf' instructions will explain how 
    $ streamlit run streamlit_app.py
    ```
 
-3. App updates 
+### App updates 
 **_Updates to V1.1:_**  
 - Removed Account Analyses  
 - Added functionality to extract_data_from_excel function  
@@ -47,9 +47,7 @@ _Note:_ The 'Guide to Making Sense of SunFin.pdf' instructions will explain how 
 - Format changes
 - Added Account_number_changes.xlsx
 
-4. TODO:
-- Auto download
-- Add threshold for transasction cancelling 
+**_Updates to V1.6:_**
+- Added multi file processing
+- Error catching for files during automated process.
 
-Hours:
-2.5 hours Monday 09/09

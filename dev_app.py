@@ -35,6 +35,7 @@ class ExcelProcessor:
         self.file_paths = []
 
     def extract_data_from_excel(self, file_path, file_type='bca', verbose=False):
+        print('Extracting')
         workbook = load_workbook(filename=file_path)
 
         found_target = False        
@@ -47,7 +48,10 @@ class ExcelProcessor:
             target_value='Procurement Business Unit'
 
         # Look to find the target value in the first column of the first sheet        
-        while not found_target:
+        print('Loop')
+        loop_count = 0
+        while not found_target and loop_count < 5:
+            loop_count += 1
             sheet = workbook.worksheets[0]
             num_rows = sheet.max_row
             target_row_idx = -1
@@ -74,9 +78,14 @@ class ExcelProcessor:
                 # print(f"'{target_value}' not found in the first column.")
                 if file_type == 'PO':
                     target_value='Procurement Business Unit Name'
-
+        
+        print('Loop Done')
         # Check if the DataFrame is empty
-        all_none = df.isnull().all().all()
+        if found_target:
+            all_none = df.isnull().all().all()
+        else:
+            all_none = True
+            st.warning(f"**_Warning:_** No data found in {file_path.name}.")
 
         if all_none:
             return None
@@ -90,6 +99,7 @@ class ExcelProcessor:
                 df['Requester Name'] = ''
                 df['Supplier Name'] = ''
                 df['Item Description'] = ''
+                df['Project Code'] = ''
                 df['Item Category Description'] = ''
                 # print(f'Shape of DataFrame:', df.shape)
                 
@@ -665,7 +675,7 @@ if st.sidebar.button('Process'):
             for i, unique_id in enumerate(unique_ids):
                 bca_file, assets_file, po_file = None, None, None
                 for uploaded_file in uploaded_files:
-                    if unique_id in uploaded_file.name:
+                    if f"{unique_id} -" in uploaded_file.name:
                         if "Assets" in uploaded_file.name or "asset" in uploaded_file.name or 'Assets' in uploaded_file.name:
                             assets_file = uploaded_file
                         elif "4 - BudgetaryControlAnalysis" in uploaded_file.name or "BCA" in uploaded_file.name:
@@ -683,13 +693,12 @@ if st.sidebar.button('Process'):
 
                 if bca_file:
                     processor = ExcelProcessor(bca_file, assets_file, po_file)
-
                     progress_placeholder = st.empty()
 
                     try:
                         output = processor.auto_process()
                         output_files.append(output)
-
+                        
                         output_name = processor.create_file_name(bca_file.name)
                         output_names.append(output_name)
 
@@ -726,6 +735,7 @@ if st.sidebar.button('Process'):
                 file_name="output_files.zip",
                 mime="application/zip"
             )
+
         else:
             if bca_file is not None:
                 st.write(f"Files uploaded successfully:")

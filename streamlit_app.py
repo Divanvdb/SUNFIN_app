@@ -34,6 +34,8 @@ class ExcelProcessor:
         self.sheet_names = ['BCA']
         self.file_paths = []
 
+        self.CFB_flag = False
+
     def extract_data_from_excel(self, file_path, file_type='bca', verbose=False):
         print('Extracting')
         workbook = load_workbook(filename=file_path)
@@ -242,14 +244,22 @@ class ExcelProcessor:
         ] = 'Ignore'
 
         # Order the transactions to make sense
-        balance_type_order = pd.CategoricalDtype(
-            categories=["Commitment", "Obligation", "Expenditure"],
-            ordered=True
-        )
+
+        if "Budget CFB" in df['Balance Type'].unique():
+            balance_type_order = pd.CategoricalDtype(
+                categories=["Budget CFB","Commitment", "Obligation", "Expenditure"],
+                ordered=True
+            )
+            self.CFB_flag = True
+        else:
+            balance_type_order = pd.CategoricalDtype(
+                categories=["Commitment", "Obligation", "Expenditure"],
+                ordered=True
+            )
 
         df["Balance Type"] = df["Balance Type"].astype(balance_type_order)
 
-        df = df.sort_values(by=["Cluster", "Balance Type"], ascending=[True, True])
+        # df = df.sort_values(by=["Cluster", "Balance Type"], ascending=[True, True])
 
         return df
 
@@ -386,15 +396,26 @@ class ExcelProcessor:
             'Total': [None] * 7}
         df = pd.DataFrame(data)
 
-        formulas_bca = [
-            "=BCA!D4",
-            "=BCA!K4",
-            "=BCA!AA23",
-            "=BCA!AD23",
-            "=BCA!AI23",
-            "=BCA!G4",
-            "=B3-(B2-B7)"
-        ]
+        if self.CFB_flag:
+            formulas_bca = [
+                "=Processed!W2",
+                "=BCA!K4",
+                "=BCA!AA23",
+                "=BCA!AD23",
+                "=BCA!AI23",
+                "=BCA!G4",
+                "=B3-(B2-B7)"
+            ]
+        else:
+            formulas_bca = [
+                "=BCA!D4",
+                "=BCA!K4",
+                "=BCA!AA23",
+                "=BCA!AD23",
+                "=BCA!AI23",
+                "=BCA!G4",
+                "=B3-(B2-B7)"
+            ]
 
         if self.balances:
             formulas_assets = [
@@ -474,6 +495,9 @@ class ExcelProcessor:
         #                                                                          'Cluster', 'Commitment Nr', 'Obligation Nr', 'Expenditure Nr']]
         
         # Actual line
+        self.df_bca.loc[
+            (self.df_bca['Balance Type'] == 'Budget') &
+            self.df_bca['Transaction Number'].str.contains("Carry forward balance", na=False), 'Balance Type'] = 'Budget CFB'
         self.df_bca = self.df_bca.loc[(self.df_bca['Balance Type'] != 'Budget')]
         self.df_bca = self.df_bca.drop(columns=[col for col in self.df_bca.columns if col is None])
 
@@ -611,7 +635,7 @@ st.title('Making Sense of SUNFIN')
 
 st.markdown('---')
 
-st.markdown('''Version: 1.6 - Last Updated 2024/10/18''')
+st.markdown('''Version: 1.6''')
 
 st.markdown('''Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information. 
             You are welcome to improve it by accessing the source code here: [Github](https://github.com/Divanvdb/SUNFIN_app)

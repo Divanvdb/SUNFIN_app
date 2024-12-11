@@ -166,3 +166,4 @@ cython_debug/
 /Verslae
 /Test_Verslae
 Test.ipynb
+streamlit_app copy.py

@@ -243,24 +243,6 @@ class ExcelProcessor:
             'Project Code'
         ] = 'Ignore'
 
-        # Order the transactions to make sense
-
-        if "Budget CFB" in df['Balance Type'].unique():
-            balance_type_order = pd.CategoricalDtype(
-                categories=["Budget CFB","Commitment", "Obligation", "Expenditure"],
-                ordered=True
-            )
-            self.CFB_flag = True
-        else:
-            balance_type_order = pd.CategoricalDtype(
-                categories=["Commitment", "Obligation", "Expenditure"],
-                ordered=True
-            )
-
-        df["Balance Type"] = df["Balance Type"].astype(balance_type_order)
-
-        # df = df.sort_values(by=["Cluster", "Balance Type"], ascending=[True, True])
-
         return df
 
     def concatenate_rows_by_po_number(self, df, group_by='Purchase Order Number'):
@@ -398,7 +380,7 @@ class ExcelProcessor:
 
         if self.CFB_flag:
             formulas_bca = [
-                "=Processed!W2",
+                "=Processed!X2",
                 "=BCA!K4",
                 "=BCA!AA23",
                 "=BCA!AD23",
@@ -583,12 +565,37 @@ class ExcelProcessor:
                                    'Balance Type', 'Transaction Amount', 'Item Description', 
                                    'Requester Name', 'Supplier Name', 'Item Category Description']
         
-        existing_columns = [col for col in column_order if col in self.df_sorted.columns]
+        # Ensure all columns are in df_sorted
 
+        for col in column_order:
+            if col not in self.df_sorted.columns:
+                self.df_sorted[col] = None
+        
+        existing_columns = [col for col in column_order if col in self.df_sorted.columns]
         
         self.df_sorted = self.df_sorted.reindex(columns=existing_columns)
 
         progress_placeholder.markdown(f"Current processing: {60}% complete...")
+
+        # Order the transactions to make sense
+
+        if "Budget CFB" in self.df_sorted['Balance Type'].unique():
+            balance_type_order = pd.CategoricalDtype(
+                categories=["Budget CFB","Commitment", "Obligation", "Expenditure"],
+                ordered=True
+            )
+            self.CFB_flag = True
+        else:
+            balance_type_order = pd.CategoricalDtype(
+                categories=["Commitment", "Obligation", "Expenditure"],
+                ordered=True
+            )
+
+        self.df_sorted["Balance Type"] = self.df_sorted["Balance Type"].astype(balance_type_order)
+
+        self.df_sorted = self.df_sorted.sort_values(by=["Balance Type"], ascending=[True])
+
+        print(self.df_sorted.iloc[0])
         output_file = self.create_output_file(self.df_sorted, self.file_paths)
         progress_placeholder.markdown(f"Current processing: {100}% complete...")
 
@@ -597,6 +604,7 @@ class ExcelProcessor:
     def auto_process(self):
         bca_, asts_, po_ = self.extract_and_check_data()
 
+        print('1')
         if bca_:
             self.process_bca()
 
@@ -625,6 +633,7 @@ class ExcelProcessor:
             return output_file
 
         else:
+            print('2')
             return None
 
 # Streamlit App
@@ -721,44 +730,51 @@ if st.sidebar.button('Process'):
 
                     try:
                         output = processor.auto_process()
-                        output_files.append(output)
-                        
-                        output_name = processor.create_file_name(bca_file.name)
-                        output_names.append(output_name)
+                        if output is not None:
+                            output_files.append(output)
+                            
+                            output_name = processor.create_file_name(bca_file.name)
+                            output_names.append(output_name)
 
-                        st.success(f"**Completed processing for** {unique_id}")
+                            st.success(f"**Completed processing for** {unique_id}")
+                        else:
+                            st.warning(f"**No output for** {unique_id}")
                     except:
                         st.error(f"**Error processing** {unique_id}")
                 else:
                     st.error(f"**No BCA file found for** {unique_id}")
 
-            zip_buffer = BytesIO()
-            with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
-                for output_file, output_name in zip(output_files, output_names):
+            if len(output_files) == 0:
+                st.error("No output files were generated.")
 
-                    if isinstance(output_file, BytesIO):
-                        # Create a temporary file
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
-                            temp_file.write(output_file.getvalue())  # Write the BytesIO content to the temp file
-                            temp_file_path = temp_file.name  # Store the temporary file path
+            else:
+                zip_buffer = BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+                    for output_file, output_name in zip(output_files, output_names):
 
-                        # Add the temporary file to the ZIP
-                        zip_file.write(temp_file_path, arcname=output_name)
+                        if isinstance(output_file, BytesIO):
+                            # Create a temporary file
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+                                temp_file.write(output_file.getvalue())  # Write the BytesIO content to the temp file
+                                temp_file_path = temp_file.name  # Store the temporary file path
 
-                        # Clean up: Delete the temporary file after adding to the ZIP
-                        os.remove(temp_file_path)
-                    else:
-                        # If output_file is already a file path, just add it directly
-                        zip_file.write(output_file, arcname=output_name)
+                            # Add the temporary file to the ZIP
+                            zip_file.write(temp_file_path, arcname=output_name)
 
-            zip_buffer.seek(0)
+                            # Clean up: Delete the temporary file after adding to the ZIP
+                            os.remove(temp_file_path)
+                        else:
+                            # If output_file is already a file path, just add it directly
+                            zip_file.write(output_file, arcname=output_name)
 
-            st.download_button(
-                label="Download All Updated Excel Files",
-                data=zip_buffer,
-                file_name="output_files.zip",
-                mime="application/zip"
-            )
+                zip_buffer.seek(0)
+
+                st.download_button(
+                    label="Download All Updated Excel Files",
+                    data=zip_buffer,
+                    file_name="output_files.zip",
+                    mime="application/zip"
+                )
 
         else:
             if bca_file is not None:
@@ -774,14 +790,18 @@ if st.sidebar.button('Process'):
 
                 output_file = processor.auto_process()
 
-                st.write("**Completed processing.**")
+                if output_file is not None:
 
-                st.download_button(
-                            label="Download Updated Excel",
-                            data=output_file,
-                            file_name=processor.create_file_name(bca_file.name),
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
+                    st.write("**Completed processing.**")
+
+                    st.download_button(
+                                label="Download Updated Excel",
+                                data=output_file,
+                                file_name=processor.create_file_name(bca_file.name),
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                else:
+                    st.error("No output file was generated.")
             else:
                 st.error("Please upload the BCA file.")
 

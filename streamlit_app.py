@@ -713,6 +713,8 @@ if st.sidebar.button('Process'):
                             assets_file = uploaded_file
                         elif "4 - BudgetaryControlAnalysis" in uploaded_file.name or "BCA" in uploaded_file.name:
                             bca_file = uploaded_file
+                        elif "5 - BudgetaryControlAnalysis" in uploaded_file.name or "BCA" in uploaded_file.name:
+                            bca_file = uploaded_file
                         elif "PO" in uploaded_file.name or "PODetails" in uploaded_file.name:
                             po_file = uploaded_file
 

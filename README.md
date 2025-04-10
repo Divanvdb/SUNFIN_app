@@ -2,7 +2,7 @@
 
 Application to format Income Statements
 
-Please find the online application here: [Application](https://blank-app-awq6au0oktk.streamlit.app/)
+Please find the online application here: [Application](https://mss-sunfin.streamlit.app/)
 
 **_Dedication:_**  
 The fact that this app is required highlights the importance of first engaging with customers towards clearly defining their basic requirements, before designing a system for them to use. May this understanding spread more widely...

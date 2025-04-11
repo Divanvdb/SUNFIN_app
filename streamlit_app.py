@@ -517,7 +517,7 @@ class ExcelProcessor:
                 (self.df_bca['Balance Type'] == 'Budget') &
                 self.df_bca['Transaction Number'].str.contains("Temporary budget_TERA", na=False), 'Balance Type'] = 'Opening Balance'
 
-        mask = (self.df_bca['Balance Type'] == 'Expenditure') & (self.df_bca['Transaction Account'] == '5227')
+        mask = (self.df_bca['Balance Type'] == 'Expenditure') & (self.df_bca['Transaction Account'].str.contains("5227", na=False))
         self.df_bca.loc[mask, 'Transaction Amount'] = self.df_bca.loc[mask, 'Transaction Amount'] 
         self.df_bca.loc[mask, 'Balance Type'] = 'Income'
         
@@ -550,7 +550,7 @@ class ExcelProcessor:
                 (self.df_assets['Balance Type'] == 'Budget') &
                 self.df_assets['Transaction Number'].str.contains("Temporary budget_TERA", na=False), 'Balance Type'] = 'Opening Balance Assets'
         
-        mask = (self.df_assets['Balance Type'] == 'Expenditure') & (self.df_assets['Transaction Account'] == '5227')
+        mask = (self.df_assets['Balance Type'] == 'Expenditure') & (self.df_assets['Transaction Account'].str.contains("5227", na=False))
         self.df_assets.loc[mask, 'Transaction Amount'] = self.df_assets.loc[mask, 'Transaction Amount'] 
         self.df_assets.loc[mask, 'Balance Type'] = 'Income'
         

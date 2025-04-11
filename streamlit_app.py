@@ -369,14 +369,14 @@ class ExcelProcessor:
 
     def get_balances(self):
         data = {
-            'Description': [
-                'Opening balance:',
-                'Closing balance:',
-                'Commitments during period:',
-                'Obligations during period:',
-                'Expenses during period:',
-                'Total consumption during period:',
-                'Total income during period:'
+                'Description': [
+                'Period opening balances (from reports):',
+                'Period closing balances (available budget):',
+                'Commitments during period (from reports):',
+                'Obligations during period (from reports):',
+                'Expenses during period (calculated):',
+                'Total consumption during period (from reports - calculated total income):',
+                'Total income during period (calculated):'
             ],
             'BCA': [None] * 7 ,
             'BCA Assets': [None] * 7,
@@ -410,20 +410,20 @@ class ExcelProcessor:
                     "=Processed!X3",
                     "=IF(ISNUMBER('BCA Assets'!K4),'BCA Assets'!K4,0)",
                     "=IF(ISNUMBER('BCA Assets'!AA23),'BCA Assets'!AA23,0)",
-                    "=IF(ISNUMBER('BCA Assets'!AD23),-(C3-C2-C8-C4-C5), 0)",
-                    "=IF(ISNUMBER('BCA Assets'!AI23),'BCA Assets'!AI23,0)",
+                    "=IF(ISNUMBER('BCA Assets'!AC23),'BCA Assets'!AC23,0)",
+                    "=-(C3-C2-C8-C4-C5)",
                     "=IF(ISNUMBER('BCA Assets'!G4),'BCA Assets'!AK42+'BCA Assets'!AK41+'BCA Assets'!AK34+'BCA Assets'!AK35,0)",
-                    "=C3-(C2-C7)"
+                    "='BCA Assets'!AK42+'BCA Assets'!AK41+'BCA Assets'!AK34+'BCA Assets'!AK35"
                 ]
             else:
                 formulas_assets = [
-                    "==IF(ISNUMBER('BCA Assets'!D4),'BCA Assets'!D4,0)",
-                    "==IF(ISNUMBER('BCA Assets'!K4),'BCA Assets'!K4,0)",
-                    "==IF(ISNUMBER('BCA Assets'!AA23),'BCA Assets'!AA23,0)",
-                    "==IF(ISNUMBER('BCA Assets'!AD23),-(C3-C2-C8-C4-C5)",
-                    "==IF(ISNUMBER('BCA Assets'!AI23),'BCA Assets'!AI23,0)",
-                    "==IF(ISNUMBER('BCA Assets'!G4),'BCA Assets'!AK42+'BCA Assets'!AK41+'BCA Assets'!AK34+'BCA Assets'!AK35,0)",
-                    "=C3-(C2-C7)"
+                    "=IF(ISNUMBER('BCA Assets'!D4),'BCA Assets'!D4,0)",
+                    "=IF(ISNUMBER('BCA Assets'!K4),'BCA Assets'!K4,0)",
+                    "=IF(ISNUMBER('BCA Assets'!AA23),'BCA Assets'!AA23,0)",
+                    "=IF(ISNUMBER('BCA Assets'!AC23),'BCA Assets'!AC23,0)",
+                    "=-(C3-C2-C8-C4-C5)",
+                    "=IF(ISNUMBER('BCA Assets'!G4),'BCA Assets'!AK42+'BCA Assets'!AK41+'BCA Assets'!AK34+'BCA Assets'!AK35,0)",
+                    "='BCA Assets'!AK42+'BCA Assets'!AK41+'BCA Assets'!AK34+'BCA Assets'!AK35"
                 ]
         else:
             print('Entered')
@@ -517,12 +517,14 @@ class ExcelProcessor:
                 (self.df_bca['Balance Type'] == 'Budget') &
                 self.df_bca['Transaction Number'].str.contains("Temporary budget_TERA", na=False), 'Balance Type'] = 'Opening Balance'
 
-        mask = (self.df_bca['Balance Type'] == 'Expenditure') & (self.df_bca['Transaction Amount'] < 0)
-        self.df_bca.loc[mask, 'Transaction Amount'] = self.df_bca.loc[mask, 'Transaction Amount'].abs()
-        self.df_bca.loc[mask, 'Balance Type'] = 'Expenditure Income'
+        mask = (self.df_bca['Balance Type'] == 'Expenditure') & (self.df_bca['Transaction Account'] == '5227')
+        self.df_bca.loc[mask, 'Transaction Amount'] = self.df_bca.loc[mask, 'Transaction Amount'] 
+        self.df_bca.loc[mask, 'Balance Type'] = 'Income'
         
         self.df_bca.loc[(self.df_bca['Transaction Number'].str.contains("Adjustments Receipts", na=False)) | 
                         (self.df_bca['Transaction Number'].str.contains("Adjustment: budget increase", na=False)), 'Balance Type'] = 'Income'
+        
+        self.df_bca.loc[self.df_bca['Balance Type'] == 'Income', 'Transaction Amount'] = self.df_bca.loc[self.df_bca['Balance Type'] == 'Income', 'Transaction Amount'] * -1
 
 
 
@@ -548,12 +550,14 @@ class ExcelProcessor:
                 (self.df_assets['Balance Type'] == 'Budget') &
                 self.df_assets['Transaction Number'].str.contains("Temporary budget_TERA", na=False), 'Balance Type'] = 'Opening Balance Assets'
         
-        mask = (self.df_assets['Balance Type'] == 'Expenditure') & (self.df_assets['Transaction Amount'] < 0)
-        self.df_assets.loc[mask, 'Transaction Amount'] = self.df_assets.loc[mask, 'Transaction Amount'].abs()
-        self.df_assets.loc[mask, 'Balance Type'] = 'Expenditure Income'
-
+        mask = (self.df_assets['Balance Type'] == 'Expenditure') & (self.df_assets['Transaction Account'] == '5227')
+        self.df_assets.loc[mask, 'Transaction Amount'] = self.df_assets.loc[mask, 'Transaction Amount'] 
+        self.df_assets.loc[mask, 'Balance Type'] = 'Income'
+        
         self.df_assets.loc[(self.df_assets['Transaction Number'].str.contains("Adjustments Receipts", na=False)) | 
                         (self.df_assets['Transaction Number'].str.contains("Adjustment: budget increase", na=False)), 'Balance Type'] = 'Income'
+        
+        self.df_assets.loc[self.df_assets['Balance Type'] == 'Income', 'Transaction Amount'] = self.df_assets.loc[self.df_assets['Balance Type'] == 'Income', 'Transaction Amount'] * -1
 
         self.df_assets = self.df_assets.loc[(self.df_assets['Balance Type'] != 'Budget')]
         self.df_assets = self.df_assets.drop(columns=[col for col in self.df_assets.columns if col is None])
@@ -659,10 +663,6 @@ class ExcelProcessor:
 
         if "Income" in self.df_sorted['Balance Type'].unique():
             categories.append("Income")
-
-        if "Expenditure Income" in self.df_sorted['Balance Type'].unique():
-            categories.append("Expenditure Income")
-            
         
         categories.append("Commitment")
         categories.append("Obligation")

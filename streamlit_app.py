@@ -336,25 +336,17 @@ class ExcelProcessor:
                 if r_idx == 1:
                     new_cell.font = Font(bold=True)
 
-                if c_idx == 2:  
+                if c_idx in [2, 3, 4]:  # Format currency for columns B, C, D
                     new_cell.number_format = 'R#,##0.00'
 
-                if c_idx == 3:  
-                    new_cell.number_format = 'R#,##0.00'
-                if c_idx == 4: 
-                    new_cell.number_format = 'R#,##0.00'
-        
-        for col in new_sheet.columns:
-            max_length = 0
-            column = col[0].column_letter  # Get the column name
-            for cell in col:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(cell.value)
-                except:
-                    pass
-            adjusted_width = (max_length + 2)  # Adding a little extra space
-            new_sheet.column_dimensions[column].width = adjusted_width
+        # Set fixed column widths
+        new_sheet.column_dimensions['A'].width = 80
+        new_sheet.column_dimensions['B'].width = 25
+        new_sheet.column_dimensions['C'].width = 25
+        new_sheet.column_dimensions['D'].width = 25
+
+        progress_placeholder.markdown(f"Current processing: {90}% complete...")
+
 
         progress_placeholder.markdown(f"Current processing: {90}% complete...")
 
@@ -391,7 +383,7 @@ class ExcelProcessor:
                 "=BCA!AD23",
                 "=-(B3-B2-B8-B4-B5)",
                 "=BCA!AI23",
-                "=BCA!AK42+BCA!AK41+BCA!AK34+BCA!AK35"
+                '=-SUMIF(Processed!W:W, "Income", Processed!X:X)'
             ]
         else:
             formulas_bca = [
@@ -401,7 +393,7 @@ class ExcelProcessor:
                 "=BCA!AD23",
                 "=-(B3-B2-B8-B4-B5)",
                 "=BCA!AI23",
-                "=BCA!AK42+BCA!AK41+BCA!AK34+BCA!AK35"
+                '=-SUMIF(Processed!W:W, "Income", Processed!X:X)'
             ]
 
         if self.balances:
@@ -413,7 +405,7 @@ class ExcelProcessor:
                     "=IF(ISNUMBER('BCA Assets'!AC23),'BCA Assets'!AC23,0)",
                     "=-(C3-C2-C8-C4-C5)",
                     "=IF(ISNUMBER('BCA Assets'!G4),'BCA Assets'!AK42+'BCA Assets'!AK41+'BCA Assets'!AK34+'BCA Assets'!AK35,0)",
-                    "='BCA Assets'!AK42+'BCA Assets'!AK41+'BCA Assets'!AK34+'BCA Assets'!AK35"
+                    "=0"
                 ]
             else:
                 formulas_assets = [
@@ -423,7 +415,7 @@ class ExcelProcessor:
                     "=IF(ISNUMBER('BCA Assets'!AC23),'BCA Assets'!AC23,0)",
                     "=-(C3-C2-C8-C4-C5)",
                     "=IF(ISNUMBER('BCA Assets'!G4),'BCA Assets'!AK42+'BCA Assets'!AK41+'BCA Assets'!AK34+'BCA Assets'!AK35,0)",
-                    "='BCA Assets'!AK42+'BCA Assets'!AK41+'BCA Assets'!AK34+'BCA Assets'!AK35"
+                    "=0"
                 ]
         else:
             print('Entered')
@@ -726,7 +718,7 @@ st.title('Making Sense of SUNFIN')
 
 st.markdown('---')
 
-st.markdown('''Version: 1.7''')
+st.markdown('''Version: 1.8''')
 
 st.markdown('''Use the app at your own risk, and please don’t blame us if it does not work or gives the wrong information. 
             You are welcome to improve it by accessing the source code here: [Github](https://github.com/Divanvdb/SUNFIN_app)

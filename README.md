@@ -27,27 +27,5 @@ _Note:_ The 'Guide to Making Sense of SunFin.pdf' instructions will explain how 
    $ streamlit run streamlit_app.py
    ```
 
-### App updates 
-**_Updates to V1.1:_**  
-- Removed Account Analyses  
-- Added functionality to extract_data_from_excel function  
-- Dropped NaN columns  
-- Ordered the columns differently with formatting  
-- Checking if assets and PO are None  
-- Fixed the PO Number heading requirements  
-- Rename Transaction Description to Cluster  
-- Added a balances sheet
-
-**_Updates to V1.2:_**  
-- Bug fixes regarding BCA files with no possitive commitments
-- No balances sheet if there is no assets file
-- Added Obligation grouping round
-
-**_Updates to V1.3:_**
-- Format changes
-- Added Account_number_changes.xlsx
-
-**_Updates to V1.6:_**
-- Added multi file processing
-- Error catching for files during automated process.
+See [CHANGELOG.md](./CHANGELOG.md) for full versioning details.
 
